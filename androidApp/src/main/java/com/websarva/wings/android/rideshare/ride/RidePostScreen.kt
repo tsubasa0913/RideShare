@@ -12,26 +12,24 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun RidePostScreen(
+    onPostSuccess: () -> Unit,
     ridePostViewModel: RidePostViewModel = viewModel()
 ) {
     val uiState by ridePostViewModel.uiState.collectAsState()
+
+    // 投稿成功の状態を一度だけ処理する
+    if (uiState.postSuccess) {
+        LaunchedEffect(uiState.postSuccess) {
+            onPostSuccess() // 親に成功を通知して画面遷移をトリガー
+            ridePostViewModel.onPostSuccessHandled() // ViewModelの状態をリセット
+        }
+    }
 
     var departure by remember { mutableStateOf("") }
     var destination by remember { mutableStateOf("") }
     var departureTime by remember { mutableStateOf("") }
     var availableSeats by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
-
-    if (uiState.postSuccess) {
-        AlertDialog(
-            onDismissRequest = { /* ... */ },
-            title = { Text("成功") },
-            text = { Text("乗車情報を投稿しました！") },
-            confirmButton = {
-                TextButton(onClick = { /* ... */ }) { Text("OK") }
-            }
-        )
-    }
 
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -102,3 +100,4 @@ fun RidePostScreen(
         }
     }
 }
+

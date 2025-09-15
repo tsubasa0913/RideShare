@@ -21,6 +21,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.websarva.wings.android.rideshare.auth.LoginScreen
+import com.websarva.wings.android.rideshare.chat.ChatScreen
 import com.websarva.wings.android.rideshare.ride.RideListScreen
 import com.websarva.wings.android.rideshare.ride.RidePostScreen
 import com.websarva.wings.android.rideshare.ride.RequestManagementScreen
@@ -33,12 +34,14 @@ class MainActivity : ComponentActivity() {
         setContent {
             RideShareTheme {
                 // アプリのメインのナビゲーションを管理
-                AppNavigator()
+                // AppNavigator()
+                ChatScreen()
             }
         }
     }
 }
 
+/*
 @Composable
 fun AppNavigator() {
     // ログイン状態を記憶する変数。rememberSaveableでアプリが閉じられても状態を保持
@@ -89,9 +92,9 @@ fun MainAppScreen() {
             when (currentScreen) {
                 "list" -> RideListScreen()
                 "requests" -> RequestManagementScreen()
-                "post" -> RidePostScreen()
+                "post" -> RidePostScreen(onPostSuccess = { currentScreen = "list" })
             }
         }
     }
 }
-
+*/
