@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.websarva.wings.android.rideshare.shared.data.model.RideRequest
 import com.websarva.wings.android.rideshare.shared.data.model.RequestStatus
 import com.websarva.wings.android.rideshare.shared.data.ride.RideRepository
+import com.websarva.wings.android.rideshare.shared.data.session.UserSession
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,9 +31,15 @@ class RequestManagementViewModel : ViewModel() {
     private fun loadReceivedRequests() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            // TODO: 本来は現在ログインしているドライバーのIDを使う
-            val driverId = "dummy-driver-id-from-firebase"
+
+            val driverId = UserSession.getCurrentUserId()
+            if (driverId == null) {
+                _uiState.update { it.copy(isLoading = false, errorMessage = "ログインしていません。") }
+                return@launch
+            }
+
             val result = rideRepository.getReceivedRequests(driverId)
+
             result.onSuccess { requests ->
                 _uiState.update { it.copy(isLoading = false, requests = requests) }
             }.onFailure { e ->
@@ -53,8 +60,10 @@ class RequestManagementViewModel : ViewModel() {
         viewModelScope.launch {
             rideRepository.updateRequestStatus(requestId, status).onSuccess {
                 // 成功したらリストを再読み込みして表示を更新
+                // ▼▼▼ ここを修正しました ▼▼▼
                 loadReceivedRequests()
             }
         }
     }
 }
+

@@ -56,4 +56,6 @@ dependencies {
 
     // デバッグ用のライブラリ
     debugImplementation(libs.androidx.ui.tooling)
+
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.1")
 }

@@ -4,10 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.websarva.wings.android.rideshare.shared.data.ride.PostRideRequest
 import com.websarva.wings.android.rideshare.shared.data.ride.RideRepository
+import com.websarva.wings.android.rideshare.shared.data.session.UserSession
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
 
 // UIの状態を表すデータクラス (変更なし)
 data class RidePostUiState(
@@ -34,14 +36,25 @@ class RidePostViewModel : ViewModel() {
         viewModelScope.launch {
             _uiState.value = RidePostUiState(isLoading = true)
 
+            // 1. UserSessionから現在ログインしているユーザーのIDを取得
+            val currentUserId = UserSession.getCurrentUserId()
+            if (currentUserId == null) {
+                // ログインしていない場合はエラーメッセージを表示して処理を中断
+                _uiState.value = RidePostUiState(errorMessage = "ログインしていません。")
+                return@launch
+            }
+
             val request = PostRideRequest(
-                driverId = "dummy-driver-id-from-firebase", // TODO: ログインユーザーのIDに置き換える
+                // 2. driverIdに取得したユーザーIDを設定
+                driverId = currentUserId,
                 departure = departure,
                 destination = destination,
-                departureTime = System.currentTimeMillis(),
+                // 3. 時刻の取得方法をマルチプラットフォーム対応のものに変更
+                departureTime = Clock.System.now().toEpochMilliseconds(),
                 availableSeats = availableSeats.toIntOrNull() ?: 0,
                 description = description
             )
+
 
             val result = rideRepository.postRide(request)
 

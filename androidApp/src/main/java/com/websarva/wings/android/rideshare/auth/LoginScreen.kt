@@ -10,6 +10,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun LoginScreen(
+    // ▼▼▼ この引数を追加 ▼▼▼
+    onLoginSuccess: () -> Unit,
     loginViewModel: LoginViewModel = viewModel()
 ) {
     // ViewModelのUI状態を監視
@@ -19,18 +21,13 @@ fun LoginScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
-    // ログイン成功時に一度だけ表示するダイアログ
+    // ▼▼▼ ログイン成功時の処理を修正 ▼▼▼
     if (uiState.loginSuccess) {
-        AlertDialog(
-            onDismissRequest = { /* 何もしない */ },
-            title = { Text("成功") },
-            text = { Text("ログインに成功しました！") },
-            confirmButton = {
-                TextButton(onClick = { /* ホーム画面へ遷移など */ }) {
-                    Text("OK")
-                }
-            }
-        )
+        // LaunchedEffectを使って、UIの再描画とは独立して一度だけ実行する
+        LaunchedEffect(Unit) {
+            // 親(MainActivity)にログイン成功を通知
+            onLoginSuccess()
+        }
     }
 
     Box(
@@ -78,3 +75,4 @@ fun LoginScreen(
         }
     }
 }
+

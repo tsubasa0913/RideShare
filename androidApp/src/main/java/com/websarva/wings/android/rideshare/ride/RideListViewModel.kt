@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.websarva.wings.android.rideshare.shared.data.model.RideOffer
 import com.websarva.wings.android.rideshare.shared.data.ride.RideRepository
+import com.websarva.wings.android.rideshare.shared.data.session.UserSession
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,7 +15,7 @@ import kotlinx.coroutines.launch
 data class RideListUiState(
     val isLoading: Boolean = true,
     val rides: List<RideOffer> = emptyList(),
-    val infoMessage: String? = null, // UIに表示する一時的なメッセージ
+    val infoMessage: String? = null,
     val errorMessage: String? = null
 )
 
@@ -31,9 +32,7 @@ class RideListViewModel : ViewModel() {
     fun loadRides() {
         viewModelScope.launch {
             _uiState.value = RideListUiState(isLoading = true)
-
             val result = rideRepository.getAllRides()
-
             result.onSuccess { rideList ->
                 _uiState.value = RideListUiState(isLoading = false, rides = rideList)
             }.onFailure { exception ->
@@ -47,9 +46,20 @@ class RideListViewModel : ViewModel() {
      */
     fun sendRideRequest(rideOfferId: String) {
         viewModelScope.launch {
-            // TODO: 本来は現在ログインしているユーザーのIDを使う
-            val passengerId = "dummy-passenger-id"
+            // --- ▼▼▼ ここから修正 ▼▼▼ ---
+
+            // 1. UserSessionから現在ログインしているユーザーのIDを取得
+            val passengerId = UserSession.getCurrentUserId()
+            if (passengerId == null) {
+                // ログインしていない場合はエラーメッセージを表示して処理を中断
+                _uiState.update { it.copy(errorMessage = "ログインしていません。") }
+                return@launch
+            }
+
+            // 2. 取得したユーザーIDを使ってリクエストを送信
             val result = rideRepository.sendRideRequest(rideOfferId, passengerId)
+
+            // --- ▲▲▲ ここまで修正 ▲▲▲ ---
 
             result.onSuccess {
                 _uiState.update { it.copy(infoMessage = "乗車リクエストを送信しました。") }

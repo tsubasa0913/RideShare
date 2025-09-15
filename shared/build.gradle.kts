@@ -65,6 +65,7 @@ kotlin {
                 // KtorとSQLDelightのドライバを削除し、Google公式Firebase SDKを追加
                 implementation("com.google.firebase:firebase-auth-ktx")
                 implementation("com.google.firebase:firebase-firestore-ktx")
+                implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.1")
             }
         }
 
