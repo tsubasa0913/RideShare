@@ -1,9 +1,8 @@
 package com.websarva.wings.android.rideshare.shared.data.auth
 
 import dev.gitlive.firebase.Firebase
+import dev.gitlive.firebase.auth.GoogleAuthProvider
 import dev.gitlive.firebase.auth.auth
-
-// ▲ LoginRequestのクラス定義をここから削除しました
 
 class AuthRepository {
 
@@ -46,6 +45,25 @@ class AuthRepository {
         } catch (e: Exception) {
             // 登録に失敗した場合（メールアドレスの形式が不正、パスワードが弱いなど）
             println("Firebase Register Error: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * GoogleのIDトークンを使ってFirebaseにログインします。
+     * @param idToken AndroidのGoogle Sign-Inから取得したIDトークン
+     * @return 成功した場合はユーザーID(UID)を、失敗した場合は例外を返します。
+     */
+    suspend fun signInWithGoogle(idToken: String, accessToken: String?): Result<String> {
+        return try {
+            // IDトークンとaccessTokenからFirebaseが認識できる認証情報を作成
+            val credential = GoogleAuthProvider.credential(idToken, accessToken)
+            // 作成した認証情報を使ってFirebaseにサインイン
+            val userCredential = Firebase.auth.signInWithCredential(credential)
+            val uid = userCredential.user?.uid ?: throw IllegalStateException("User UID is null")
+            Result.success(uid)
+        } catch (e: Exception) {
+            println("Firebase Google Sign-In Error: ${e.message}")
             Result.failure(e)
         }
     }

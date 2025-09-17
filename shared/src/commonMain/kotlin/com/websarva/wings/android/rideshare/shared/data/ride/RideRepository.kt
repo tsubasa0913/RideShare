@@ -2,16 +2,15 @@ package com.websarva.wings.android.rideshare.shared.data.ride
 
 import com.websarva.wings.android.rideshare.shared.data.model.RideOffer
 import com.websarva.wings.android.rideshare.shared.data.model.RideRequest
-import com.websarva.wings.android.rideshare.shared.data.model.RideStatus
 import com.websarva.wings.android.rideshare.shared.data.model.RequestStatus
+import com.websarva.wings.android.rideshare.shared.data.model.RideStatus
 import dev.gitlive.firebase.Firebase
 import dev.gitlive.firebase.firestore.firestore
 import dev.gitlive.firebase.firestore.where
-import kotlinx.datetime.Clock //追加
+import kotlinx.datetime.Clock
 import kotlinx.serialization.Serializable
 
 // 乗車提供を投稿する際にサーバーに送信するデータ
-// このデータクラスはViewModelからデータを受け取るために引き続き使用します
 @Serializable
 data class PostRideRequest(
     val driverId: String,
@@ -36,8 +35,7 @@ class RideRepository {
                 availableSeats = request.availableSeats,
                 description = request.description,
                 status = RideStatus.AVAILABLE,
-                // ▼▼▼ 2. ここを修正 ▼▼▼
-                createdAt = Clock.System.now().toEpochMilliseconds() // 現在時刻をマルチプラットフォームで取得
+                createdAt = Clock.System.now().toEpochMilliseconds()
             )
 
             collection.add(newRide)
@@ -49,16 +47,11 @@ class RideRepository {
         }
     }
 
-    /**
-     * すべての乗車提供情報をCloud Firestoreから取得する
-     */
     suspend fun getAllRides(): Result<List<RideOffer>> {
         return try {
             val snapshot = Firebase.firestore.collection("rides").get()
             val rides = snapshot.documents.map { document ->
-                // FirestoreのドキュメントをRideOfferオブジェクトに変換
                 val ride = document.data<RideOffer>()
-                // Firestoreが自動生成したIDをオブジェクトにセット
                 ride.copy(id = document.id)
             }
             Result.success(rides)
@@ -69,21 +62,20 @@ class RideRepository {
     }
 
     /**
-     * 新しい乗車リクエストをCloud Firestoreに保存する
+     * 新しい乗車リクエストをCloud Firestoreに保存する (driverIdも保存するよう変更)
      */
-    suspend fun sendRideRequest(rideOfferId: String, passengerId: String): Result<Unit> {
+    suspend fun sendRideRequest(rideOfferId: String, passengerId: String, driverId: String): Result<Unit> {
         return try {
             val collection = Firebase.firestore.collection("requests")
-
             val newRequest = RideRequest(
-                id = "", // Firestoreが自動採番
+                id = "",
                 rideOfferId = rideOfferId,
                 passengerId = passengerId,
-                message = "よろしくお願いします！", // (任意)メッセージ
-                status = RequestStatus.PENDING, // 最初は「承認待ち」状態
+                driverId = driverId, // driverIdを保存
+                message = "よろしくお願いします！",
+                status = RequestStatus.PENDING,
                 createdAt = Clock.System.now().toEpochMilliseconds()
             )
-
             collection.add(newRequest)
             Result.success(Unit)
         } catch (e: Exception) {
@@ -93,28 +85,26 @@ class RideRepository {
     }
 
     /**
-     * 指定されたドライバーIDの乗車提供に対するリクエストをすべて取得する
+     * 【修正版】指定されたドライバーIDのリクエストを取得する
      */
     suspend fun getReceivedRequests(driverId: String): Result<List<RideRequest>> {
         return try {
-            // 1. ドライバーが投稿した乗車情報をすべて取得
-            val ridesSnapshot = Firebase.firestore.collection("rides")
-                .where("driverId", "==", driverId).get()
-            val rideIds = ridesSnapshot.documents.map { it.id }
+            // where句が機能しない問題の回避策として、全件取得後に手動でフィルタリングします。
+            val allRequestsSnapshot = Firebase.firestore.collection("requests").get()
 
-            if (rideIds.isEmpty()) {
-                return Result.success(emptyList()) // 乗車情報がなければリクエストもない
-            }
+            val matchingRequests = allRequestsSnapshot.documents
+                .map { document ->
+                    // まずドキュメントをRideRequestオブジェクトに変換し、IDをセットします
+                    val request = document.data<RideRequest>()
+                    request.copy(id = document.id)
+                }
+                .filter { request ->
+                    // その後、driverIdが一致するものだけを絞り込みます
+                    request.driverId == driverId
+                }
 
-            // 2. 取得した乗車情報IDに紐づくリクエストをすべて取得
-            val requestsSnapshot = Firebase.firestore.collection("requests")
-                .where("rideOfferId", "in", rideIds).get()
+            Result.success(matchingRequests)
 
-            val requests = requestsSnapshot.documents.map { document ->
-                val request = document.data<RideRequest>()
-                request.copy(id = document.id)
-            }
-            Result.success(requests)
         } catch (e: Exception) {
             println("Firestore Get Received Requests Error: ${e.message}")
             Result.failure(e)
@@ -134,4 +124,31 @@ class RideRepository {
             Result.failure(e)
         }
     }
+
+    /**
+     * ▼▼▼ 新しく追加した関数 ▼▼▼
+     * 指定された乗客IDの送信済みリクエストをすべて取得する
+     */
+    suspend fun getSentRequests(passengerId: String): Result<List<RideRequest>> {
+        return try {
+            // where句が機能しない問題に備え、こちらも手動フィルタリングで実装します
+            val allRequestsSnapshot = Firebase.firestore.collection("requests").get()
+
+            val matchingRequests = allRequestsSnapshot.documents
+                .map { document ->
+                    val request = document.data<RideRequest>()
+                    request.copy(id = document.id)
+                }
+                .filter { request ->
+                    request.passengerId == passengerId
+                }
+
+            Result.success(matchingRequests)
+
+        } catch (e: Exception) {
+            println("Firestore Get Sent Requests Error: ${e.message}")
+            Result.failure(e)
+        }
+    }
 }
+

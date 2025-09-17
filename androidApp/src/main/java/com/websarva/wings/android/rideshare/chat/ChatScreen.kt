@@ -15,15 +15,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.websarva.wings.android.rideshare.shared.data.model.Message
 import com.websarva.wings.android.rideshare.shared.data.session.UserSession
 import kotlinx.coroutines.launch
 
+// ▼▼▼ 1. rideRequestId を引数で受け取るように変更 ▼▼▼
 @Composable
 fun ChatScreen(
-    chatViewModel: ChatViewModel = viewModel()
+    rideRequestId: String
 ) {
+    // ▼▼▼ 2. rideRequestId を使ってViewModelを生成するファクトリを作成 ▼▼▼
+    val viewModelFactory = object : ViewModelProvider.Factory {
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            return ChatViewModel(rideRequestId) as T
+        }
+    }
+    val chatViewModel: ChatViewModel = viewModel(factory = viewModelFactory)
+
     val uiState by chatViewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()

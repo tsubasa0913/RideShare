@@ -25,41 +25,32 @@ class RideListViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(RideListUiState())
     val uiState: StateFlow<RideListUiState> = _uiState.asStateFlow()
 
-    init {
-        loadRides()
-    }
-
     fun loadRides() {
         viewModelScope.launch {
-            _uiState.value = RideListUiState(isLoading = true)
+            _uiState.update { it.copy(isLoading = true) }
+
             val result = rideRepository.getAllRides()
+
             result.onSuccess { rideList ->
-                _uiState.value = RideListUiState(isLoading = false, rides = rideList)
+                _uiState.update { it.copy(isLoading = false, rides = rideList) }
             }.onFailure { exception ->
-                _uiState.value = RideListUiState(isLoading = false, errorMessage = "データの取得に失敗しました: ${exception.message}")
+                _uiState.update { it.copy(isLoading = false, errorMessage = "データの取得に失敗しました: ${exception.message}") }
             }
         }
     }
 
     /**
-     * 乗車リクエストを送信する
+     * 乗車リクエストを送信する (driverIdも渡すよう変更)
      */
-    fun sendRideRequest(rideOfferId: String) {
+    fun sendRideRequest(rideOffer: RideOffer) { // ◀◀ rideIdだけでなくRideOffer全体を受け取る
         viewModelScope.launch {
-            // --- ▼▼▼ ここから修正 ▼▼▼ ---
-
-            // 1. UserSessionから現在ログインしているユーザーのIDを取得
             val passengerId = UserSession.getCurrentUserId()
             if (passengerId == null) {
-                // ログインしていない場合はエラーメッセージを表示して処理を中断
                 _uiState.update { it.copy(errorMessage = "ログインしていません。") }
                 return@launch
             }
-
-            // 2. 取得したユーザーIDを使ってリクエストを送信
-            val result = rideRepository.sendRideRequest(rideOfferId, passengerId)
-
-            // --- ▲▲▲ ここまで修正 ▲▲▲ ---
+            // ▼▼▼ rideOfferからIDとdriverIdを取り出して渡す ▼▼▼
+            val result = rideRepository.sendRideRequest(rideOffer.id, passengerId, rideOffer.driverId)
 
             result.onSuccess {
                 _uiState.update { it.copy(infoMessage = "乗車リクエストを送信しました。") }

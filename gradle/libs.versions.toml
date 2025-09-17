@@ -11,6 +11,7 @@ sqlDelight = "2.0.2"
 lifecycle = "2.8.0"
 compose-bom = "2024.05.00"
 google-services = "4.4.2"
+play-services-auth = "21.2.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -38,6 +39,8 @@ androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
+androidx-google-play-services-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "play-services-auth" }
+
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

@@ -12,7 +12,20 @@
           "package_name": "com.websarva.wings.android.rideshare"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "1071455120309-2cr2d1jhujviisjp2eum2ar4s0ht51qg.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.websarva.wings.android.rideshare",
+            "certificate_hash": "90dfcbc5d3620bf28821dc60691a836d0eb71392"
+          }
+        },
+        {
+          "client_id": "1071455120309-pknvalmbhu31i2ggtg8bpt7ot5nsmhnh.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyD9Jj4lIsQ8gf2VIFJ16HovvPE9NapVj1s"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1071455120309-pknvalmbhu31i2ggtg8bpt7ot5nsmhnh.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

@@ -12,11 +12,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.websarva.wings.android.rideshare.shared.data.model.RideRequest
 import com.websarva.wings.android.rideshare.shared.data.model.RequestStatus
+import com.websarva.wings.android.rideshare.shared.data.model.RideRequest
+
 
 @Composable
 fun RequestManagementScreen(
+    // ▼▼▼ 1. チャットを開くためのコールバックを追加 ▼▼▼
+    onOpenChat: (requestId: String) -> Unit,
     viewModel: RequestManagementViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -39,7 +42,9 @@ fun RequestManagementScreen(
                         RequestItem(
                             request = request,
                             onApprove = { viewModel.approveRequest(request.id) },
-                            onReject = { viewModel.rejectRequest(request.id) }
+                            onReject = { viewModel.rejectRequest(request.id) },
+                            // ▼▼▼ 2. onOpenChatを下に渡す ▼▼▼
+                            onOpenChat = { onOpenChat(request.id) }
                         )
                     }
                 }
@@ -48,13 +53,20 @@ fun RequestManagementScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RequestItem(
     request: RideRequest,
     onApprove: () -> Unit,
-    onReject: () -> Unit
+    onReject: () -> Unit,
+    // ▼▼▼ 3. onOpenChatを受け取る ▼▼▼
+    onOpenChat: () -> Unit
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    // ▼▼▼ 4. 承認済みの場合はカード全体をタップ可能にする ▼▼▼
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = { if (request.status == RequestStatus.ACCEPTED) onOpenChat() }
+    ) {
         Column(Modifier.padding(16.dp)) {
             Text("乗客ID: ${request.passengerId}", style = MaterialTheme.typography.titleMedium)
             Text("乗車ID: ${request.rideOfferId}", style = MaterialTheme.typography.bodySmall)
@@ -88,3 +100,4 @@ fun RequestStatusBadge(status: RequestStatus) {
     }
     Text(text, color = color, style = MaterialTheme.typography.labelLarge)
 }
+

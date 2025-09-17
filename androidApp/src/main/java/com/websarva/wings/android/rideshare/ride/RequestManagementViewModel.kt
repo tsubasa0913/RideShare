@@ -1,5 +1,6 @@
 package com.websarva.wings.android.rideshare.ride
 
+import android.util.Log // ◀◀◀ 1. Logをimport
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.websarva.wings.android.rideshare.shared.data.model.RideRequest
@@ -33,6 +34,10 @@ class RequestManagementViewModel : ViewModel() {
             _uiState.update { it.copy(isLoading = true) }
 
             val driverId = UserSession.getCurrentUserId()
+
+            // ▼▼▼ 2. ここにデバッグログを追加 ▼▼▼
+            Log.d("RequestDebug", "Attempting to load requests for driverId: $driverId")
+
             if (driverId == null) {
                 _uiState.update { it.copy(isLoading = false, errorMessage = "ログインしていません。") }
                 return@launch
@@ -41,6 +46,8 @@ class RequestManagementViewModel : ViewModel() {
             val result = rideRepository.getReceivedRequests(driverId)
 
             result.onSuccess { requests ->
+                // ▼▼▼ 3. 結果のログも追加 ▼▼▼
+                Log.d("RequestDebug", "Found ${requests.size} requests for driverId: $driverId")
                 _uiState.update { it.copy(isLoading = false, requests = requests) }
             }.onFailure { e ->
                 _uiState.update { it.copy(isLoading = false, errorMessage = "リクエストの取得に失敗: ${e.message}") }
@@ -60,7 +67,6 @@ class RequestManagementViewModel : ViewModel() {
         viewModelScope.launch {
             rideRepository.updateRequestStatus(requestId, status).onSuccess {
                 // 成功したらリストを再読み込みして表示を更新
-                // ▼▼▼ ここを修正しました ▼▼▼
                 loadReceivedRequests()
             }
         }

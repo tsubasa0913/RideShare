@@ -6,15 +6,21 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.MailOutline
+import androidx.compose.material.icons.filled.Send
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -25,6 +31,7 @@ import com.websarva.wings.android.rideshare.chat.ChatScreen
 import com.websarva.wings.android.rideshare.ride.RideListScreen
 import com.websarva.wings.android.rideshare.ride.RidePostScreen
 import com.websarva.wings.android.rideshare.ride.RequestManagementScreen
+import com.websarva.wings.android.rideshare.ride.SentRequestScreen
 import com.websarva.wings.android.rideshare.shared.data.session.UserSession
 import com.websarva.wings.android.rideshare.ui.theme.RideShareTheme
 
@@ -33,37 +40,64 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             RideShareTheme {
-                // アプリのメインのナビゲーションを管理
-                // AppNavigator()
-                ChatScreen()
+                AppNavigator()
             }
         }
     }
 }
 
-/*
 @Composable
 fun AppNavigator() {
-    // ログイン状態を記憶する変数。rememberSaveableでアプリが閉じられても状態を保持
-    var isLoggedIn by rememberSaveable { mutableStateOf(UserSession.getCurrentUserId() != null) }
+    // UIが記憶するユーザーIDを、ログイン状態の唯一の判断基準とする
+    var currentUserId by rememberSaveable { mutableStateOf(UserSession.getCurrentUserId()) }
+    var chatRequestId by rememberSaveable { mutableStateOf<String?>(null) }
 
-    if (isLoggedIn) {
-        // ログイン済みの場合はメイン画面を表示
-        MainAppScreen()
+    // アプリ復帰時などに、UIの状態とUserSessionの状態を同期させる
+    LaunchedEffect(currentUserId) {
+        if (currentUserId != null && UserSession.getCurrentUserId() == null) {
+            UserSession.login(currentUserId!!)
+        }
+    }
+
+    if (chatRequestId != null) {
+        ChatScreen(rideRequestId = chatRequestId!!)
+    } else if (currentUserId != null) {
+        MainAppScreen(
+            onOpenChat = { requestId -> chatRequestId = requestId },
+            onLogout = {
+                UserSession.logout()
+                chatRequestId = null
+                currentUserId = null // UIの状態を直接更新
+            }
+        )
     } else {
-        // 未ログインの場合はログイン画面を表示
-        LoginScreen(onLoginSuccess = { isLoggedIn = true })
+        LoginScreen(onLoginSuccess = {
+            // ViewModelがUserSessionを更新した後、その最新の状態でUIを更新
+            currentUserId = UserSession.getCurrentUserId()
+        })
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainAppScreen() {
-    // 現在選択されている画面を記憶する変数
+fun MainAppScreen(
+    onOpenChat: (requestId: String) -> Unit,
+    onLogout: () -> Unit
+) {
     var currentScreen by rememberSaveable { mutableStateOf("list") }
 
     Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("大学乗り合いアプリ") },
+                actions = {
+                    IconButton(onClick = onLogout) {
+                        Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "ログアウト")
+                    }
+                }
+            )
+        },
         bottomBar = {
-            // 画面下部のナビゲーションバー
             NavigationBar {
                 NavigationBarItem(
                     selected = currentScreen == "list",
@@ -72,10 +106,16 @@ fun MainAppScreen() {
                     label = { Text("探す") }
                 )
                 NavigationBarItem(
+                    selected = currentScreen == "sent",
+                    onClick = { currentScreen = "sent" },
+                    icon = { Icon(Icons.Default.Send, contentDescription = "送信済み一覧") },
+                    label = { Text("送信済み") }
+                )
+                NavigationBarItem(
                     selected = currentScreen == "requests",
                     onClick = { currentScreen = "requests" },
                     icon = { Icon(Icons.Default.MailOutline, contentDescription = "リクエスト管理") },
-                    label = { Text("リクエスト") }
+                    label = { Text("受信箱") }
                 )
                 NavigationBarItem(
                     selected = currentScreen == "post",
@@ -86,15 +126,14 @@ fun MainAppScreen() {
             }
         }
     ) { innerPadding ->
-        // 各画面をBoxで囲み、Scaffoldからのpaddingを適用する
         Box(modifier = Modifier.padding(innerPadding)) {
-            // 選択されている画面に応じて中身を切り替える
             when (currentScreen) {
                 "list" -> RideListScreen()
-                "requests" -> RequestManagementScreen()
+                "sent" -> SentRequestScreen()
+                "requests" -> RequestManagementScreen(onOpenChat = onOpenChat)
                 "post" -> RidePostScreen(onPostSuccess = { currentScreen = "list" })
             }
         }
     }
 }
-*/
+

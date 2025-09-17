@@ -1,76 +1,82 @@
 package com.websarva.wings.android.rideshare.auth
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
+import com.websarva.wings.android.rideshare.R
 
 @Composable
 fun LoginScreen(
-    // ▼▼▼ この引数を追加 ▼▼▼
     onLoginSuccess: () -> Unit,
     loginViewModel: LoginViewModel = viewModel()
 ) {
-    // ViewModelのUI状態を監視
     val uiState by loginViewModel.uiState.collectAsState()
+    val context = LocalContext.current
 
-    // ユーザーが入力するメールアドレスとパスワードの状態
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+    // 1. Googleログインのオプションを設定
+    val gso = remember {
+        GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            // `google-services.json`から自動生成されるIDを要求
+            .requestIdToken(context.getString(R.string.default_web_client_id))
+            .requestEmail()
+            .build()
+    }
+    val googleSignInClient = remember { GoogleSignIn.getClient(context, gso) }
 
-    // ▼▼▼ ログイン成功時の処理を修正 ▼▼▼
+    // 2. Googleログイン画面を起動し、結果を受け取るための仕組み
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        try {
+            val account = task.getResult(ApiException::class.java)!!
+            val idToken = account.idToken
+            // 3. 取得したIDトークンをViewModelに渡してFirebase認証を開始
+            loginViewModel.signInWithGoogle(idToken)
+        } catch (e: ApiException) {
+            println("Google Sign-In failed with error code: ${e.statusCode}")
+        }
+    }
+
+    // ログイン成功時に親コンポーネント(MainActivity)に通知
     if (uiState.loginSuccess) {
-        // LaunchedEffectを使って、UIの再描画とは独立して一度だけ実行する
         LaunchedEffect(Unit) {
-            // 親(MainActivity)にログイン成功を通知
             onLoginSuccess()
         }
     }
 
+    // --- UI部分 ---
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text("ログイン", style = MaterialTheme.typography.headlineMedium)
+            Text("大学乗り合いアプリへようこそ", style = MaterialTheme.typography.headlineSmall)
 
-            OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
-                label = { Text("大学メールアドレス") }
-            )
+            // 4. このボタンが押されると、上記2のランチャーがGoogleログイン画面を起動する
+            Button(onClick = { launcher.launch(googleSignInClient.signInIntent) }) {
+                Text("Googleでサインイン")
+            }
 
-            OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
-                label = { Text("パスワード") }
-            )
+            if (uiState.isLoading) {
+                CircularProgressIndicator()
+            }
 
-            // エラーメッセージがあれば表示
             uiState.errorMessage?.let {
                 Text(it, color = MaterialTheme.colorScheme.error)
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = { loginViewModel.login(email, password) },
-                // ローディング中はボタンを押せないようにする
-                enabled = !uiState.isLoading
-            ) {
-                Text("ログイン")
-            }
-
-            // ローディングインジケータ
-            if (uiState.isLoading) {
-                CircularProgressIndicator(modifier = Modifier.padding(top = 16.dp))
             }
         }
     }

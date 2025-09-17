@@ -21,14 +21,16 @@ fun RideListScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    // ViewModelのメッセージをSnackbarで表示する
+    LaunchedEffect(Unit) {
+        rideListViewModel.loadRides()
+    }
+
     LaunchedEffect(uiState.infoMessage) {
-        // infoMessageをローカル変数にコピーしてnull安全性を保証する
         val message = uiState.infoMessage
         if (message != null) {
             scope.launch {
                 snackbarHostState.showSnackbar(message)
-                rideListViewModel.clearInfoMessage() // メッセージを表示したらクリアする
+                rideListViewModel.clearInfoMessage()
             }
         }
     }
@@ -50,8 +52,9 @@ fun RideListScreen(
                 else -> {
                     RideList(
                         rides = uiState.rides,
-                        onRequestClick = { rideId ->
-                            rideListViewModel.sendRideRequest(rideId)
+                        // ▼▼▼ rideIdだけでなくrideオブジェクト全体を渡すように変更 ▼▼▼
+                        onRequestClick = { ride ->
+                            rideListViewModel.sendRideRequest(ride)
                         }
                     )
                 }
@@ -61,7 +64,7 @@ fun RideListScreen(
 }
 
 @Composable
-fun RideList(rides: List<RideOffer>, onRequestClick: (String) -> Unit) {
+fun RideList(rides: List<RideOffer>, onRequestClick: (RideOffer) -> Unit) { // ◀◀ 引数の型を変更
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
@@ -70,7 +73,7 @@ fun RideList(rides: List<RideOffer>, onRequestClick: (String) -> Unit) {
         items(rides) { ride ->
             RideListItem(
                 ride = ride,
-                onClick = { onRequestClick(ride.id) }
+                onClick = { onRequestClick(ride) } // ◀◀ rideオブジェクト全体を渡す
             )
         }
     }
@@ -81,7 +84,7 @@ fun RideList(rides: List<RideOffer>, onRequestClick: (String) -> Unit) {
 fun RideListItem(ride: RideOffer, onClick: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        onClick = onClick // カードをタップ可能にする
+        onClick = onClick
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(text = "出発地: ${ride.departure}", style = MaterialTheme.typography.titleMedium)

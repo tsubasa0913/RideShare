@@ -20,6 +20,7 @@ data class RideRequest(
     val id: String,
     val rideOfferId: String,
     val passengerId: String,
+    val driverId: String,
     val message: String? = null,
     val status: RequestStatus,
     val createdAt: Long
@@ -37,3 +38,4 @@ enum class RequestStatus {
     ACCEPTED,
     REJECTED
 }
+
