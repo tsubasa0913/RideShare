@@ -1,20 +1,9 @@
 package com.websarva.wings.android.rideshare.ride
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -23,9 +12,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.websarva.wings.android.rideshare.shared.data.model.RideRequest
+import com.websarva.wings.android.rideshare.shared.data.model.RequestStatus
 
 @Composable
 fun SentRequestScreen(
+    // ▼▼▼ 1. チャットを開くためのコールバックを追加 ▼▼▼
+    onOpenChat: (requestId: String) -> Unit,
     viewModel: SentRequestViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -45,7 +37,11 @@ fun SentRequestScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(uiState.requests) { request ->
-                        SentRequestItem(request = request)
+                        SentRequestItem(
+                            request = request,
+                            // ▼▼▼ 2. onOpenChatを下に渡す ▼▼▼
+                            onOpenChat = { onOpenChat(request.id) }
+                        )
                     }
                 }
             }
@@ -53,9 +49,22 @@ fun SentRequestScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SentRequestItem(request: RideRequest) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+fun SentRequestItem(
+    request: RideRequest,
+    // ▼▼▼ 3. onOpenChatを受け取る ▼▼▼
+    onOpenChat: () -> Unit
+) {
+    // ▼▼▼ 4. 承認済みの場合はカード全体をタップ可能にする ▼▼▼
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = {
+            if (request.status == RequestStatus.ACCEPTED) {
+                onOpenChat()
+            }
+        }
+    ) {
         Column(Modifier.padding(16.dp)) {
             Text("乗車ID: ${request.rideOfferId}", style = MaterialTheme.typography.titleMedium)
             Text("ドライバーID: ${request.driverId}", style = MaterialTheme.typography.bodySmall)
@@ -65,3 +74,4 @@ fun SentRequestItem(request: RideRequest) {
         }
     }
 }
+

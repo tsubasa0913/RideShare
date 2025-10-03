@@ -28,9 +28,11 @@ fun ChatScreen(
     rideRequestId: String
 ) {
     // ▼▼▼ 2. rideRequestId を使ってViewModelを生成するファクトリを作成 ▼▼▼
-    val viewModelFactory = object : ViewModelProvider.Factory {
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return ChatViewModel(rideRequestId) as T
+    val viewModelFactory = remember(rideRequestId) {
+        object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return ChatViewModel(rideRequestId) as T
+            }
         }
     }
     val chatViewModel: ChatViewModel = viewModel(factory = viewModelFactory)
@@ -40,7 +42,7 @@ fun ChatScreen(
     val coroutineScope = rememberCoroutineScope()
 
     // 新しいメッセージが来たら一番下までスクロールする
-    LaunchedEffect(uiState.messages) {
+    LaunchedEffect(uiState.messages.size) {
         if (uiState.messages.isNotEmpty()) {
             coroutineScope.launch {
                 listState.animateScrollToItem(uiState.messages.lastIndex)

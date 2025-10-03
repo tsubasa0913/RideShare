@@ -10,6 +10,7 @@ import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.MailOutline
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -34,6 +35,7 @@ import com.websarva.wings.android.rideshare.ride.RequestManagementScreen
 import com.websarva.wings.android.rideshare.ride.SentRequestScreen
 import com.websarva.wings.android.rideshare.shared.data.session.UserSession
 import com.websarva.wings.android.rideshare.ui.theme.RideShareTheme
+import com.websarva.wings.android.rideshare.user.ProfileScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -123,15 +125,23 @@ fun MainAppScreen(
                     icon = { Icon(Icons.Default.Add, contentDescription = "乗車投稿") },
                     label = { Text("投稿") }
                 )
+                NavigationBarItem(
+                    selected = currentScreen == "profile",
+                    onClick = { currentScreen = "profile" },
+                    icon = { Icon(Icons.Default.Person, contentDescription = "プロフィール") },
+                    label = { Text("プロフィール") }
+                )
             }
         }
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding)) {
             when (currentScreen) {
                 "list" -> RideListScreen()
-                "sent" -> SentRequestScreen()
+                // ▼▼▼ "sent"の場合にonOpenChatを渡すように修正 ▼▼▼
+                "sent" -> SentRequestScreen(onOpenChat = onOpenChat)
                 "requests" -> RequestManagementScreen(onOpenChat = onOpenChat)
                 "post" -> RidePostScreen(onPostSuccess = { currentScreen = "list" })
+                "profile" -> ProfileScreen()
             }
         }
     }

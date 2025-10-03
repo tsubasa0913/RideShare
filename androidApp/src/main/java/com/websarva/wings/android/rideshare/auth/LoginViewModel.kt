@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.websarva.wings.android.rideshare.shared.data.auth.AuthRepository
 import com.websarva.wings.android.rideshare.shared.data.session.UserSession
+import com.websarva.wings.android.rideshare.shared.data.user.UserRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,14 +18,11 @@ data class LoginUiState(
 
 class LoginViewModel : ViewModel() {
     private val authRepository = AuthRepository()
+    private val userRepository = UserRepository() // ◀◀ 1. UserRepositoryを追加
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
-    /**
-     * LoginScreenから受け取ったIDトークンでサインイン処理を開始する
-     */
     fun signInWithGoogle(idToken: String?) {
-        // トークンがnullの場合はエラー
         if (idToken == null) {
             _uiState.value = LoginUiState(errorMessage = "Google Sign-In failed: No token provided.")
             return
@@ -32,13 +30,19 @@ class LoginViewModel : ViewModel() {
 
         viewModelScope.launch {
             _uiState.value = LoginUiState(isLoading = true)
-            // ▼▼▼ authRepositoryの呼び出しを修正 ▼▼▼
-            val result = authRepository.signInWithGoogle(idToken, null) // accessTokenにnullを渡す
+            // accessTokenにはnullを渡します
+            val result = authRepository.signInWithGoogle(idToken, null)
 
             result.onSuccess { uid ->
                 println("Firebase Google Login Success! UID: $uid")
                 UserSession.login(uid)
-                _uiState.value = LoginUiState(loginSuccess = true)
+                // ▼▼▼ 2. ログイン成功後、プロフィールの存在確認と作成を行う ▼▼▼
+                userRepository.checkAndCreateUserProfile().onSuccess {
+                    _uiState.value = LoginUiState(loginSuccess = true)
+                }.onFailure {
+                    // プロフィール作成に失敗してもログイン自体は成功として扱う
+                    _uiState.value = LoginUiState(loginSuccess = true)
+                }
             }.onFailure { exception ->
                 _uiState.value = LoginUiState(errorMessage = "Googleログインに失敗しました: ${exception.message}")
             }
