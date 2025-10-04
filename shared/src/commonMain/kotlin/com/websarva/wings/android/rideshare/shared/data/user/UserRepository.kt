@@ -4,6 +4,7 @@ import com.websarva.wings.android.rideshare.shared.data.model.User
 import dev.gitlive.firebase.Firebase
 import dev.gitlive.firebase.auth.auth
 import dev.gitlive.firebase.firestore.firestore
+import dev.gitlive.firebase.firestore.where
 
 class UserRepository {
 
@@ -56,4 +57,25 @@ class UserRepository {
             Result.success(Unit)
         }
     }
+
+    /**
+     * ▼▼▼ 新しく追加した関数 ▼▼▼
+     * 複数のUIDからユーザープロフィールのマップを取得する
+     */
+    suspend fun getUsers(uids: List<String>): Result<Map<String, User>> {
+        if (uids.isEmpty()) return Result.success(emptyMap())
+        return try {
+            // 'in'クエリを使って、一度の通信で複数のユーザー情報を取得
+            val snapshot = usersCollection.where("uid", "in", uids).get()
+            val usersMap = snapshot.documents.mapNotNull { doc ->
+                val user = doc.data<User>()
+                user.uid to user
+            }.toMap()
+            Result.success(usersMap)
+        } catch (e: Exception) {
+            println("Get Users Error: ${e.message}")
+            Result.failure(e)
+        }
+    }
 }
+

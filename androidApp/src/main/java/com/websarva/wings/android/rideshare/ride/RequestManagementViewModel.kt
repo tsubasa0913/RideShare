@@ -1,6 +1,6 @@
 package com.websarva.wings.android.rideshare.ride
 
-import android.util.Log // ◀◀◀ 1. Logをimport
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.websarva.wings.android.rideshare.shared.data.model.RideRequest
@@ -29,24 +29,18 @@ class RequestManagementViewModel : ViewModel() {
         loadReceivedRequests()
     }
 
-    private fun loadReceivedRequests() {
+    fun loadReceivedRequests() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-
             val driverId = UserSession.getCurrentUserId()
-
-            // ▼▼▼ 2. ここにデバッグログを追加 ▼▼▼
             Log.d("RequestDebug", "Attempting to load requests for driverId: $driverId")
-
             if (driverId == null) {
                 _uiState.update { it.copy(isLoading = false, errorMessage = "ログインしていません。") }
                 return@launch
             }
 
             val result = rideRepository.getReceivedRequests(driverId)
-
             result.onSuccess { requests ->
-                // ▼▼▼ 3. 結果のログも追加 ▼▼▼
                 Log.d("RequestDebug", "Found ${requests.size} requests for driverId: $driverId")
                 _uiState.update { it.copy(isLoading = false, requests = requests) }
             }.onFailure { e ->
@@ -66,8 +60,22 @@ class RequestManagementViewModel : ViewModel() {
     private fun updateRequestStatus(requestId: String, status: RequestStatus) {
         viewModelScope.launch {
             rideRepository.updateRequestStatus(requestId, status).onSuccess {
-                // 成功したらリストを再読み込みして表示を更新
                 loadReceivedRequests()
+            }
+        }
+    }
+
+    /**
+     * ▼▼▼ 新しく追加した関数 ▼▼▼
+     * 指定されたリクエストを削除する
+     */
+    fun deleteRequest(requestId: String) {
+        viewModelScope.launch {
+            rideRepository.deleteRequest(requestId).onSuccess {
+                // 削除に成功したら、リストを再読み込みしてUIを更新
+                loadReceivedRequests()
+            }.onFailure {
+                _uiState.update { it.copy(errorMessage = "削除に失敗しました。") }
             }
         }
     }

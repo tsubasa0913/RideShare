@@ -27,7 +27,7 @@ class SentRequestViewModel : ViewModel() {
         loadSentRequests()
     }
 
-    private fun loadSentRequests() {
+    fun loadSentRequests() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             val passengerId = UserSession.getCurrentUserId()
@@ -44,4 +44,20 @@ class SentRequestViewModel : ViewModel() {
             }
         }
     }
+
+    /**
+     * ▼▼▼ 新しく追加した関数 ▼▼▼
+     * 指定されたリクエストを削除する
+     */
+    fun deleteRequest(requestId: String) {
+        viewModelScope.launch {
+            rideRepository.deleteRequest(requestId).onSuccess {
+                // 削除に成功したら、リストを再読み込みしてUIを更新
+                loadSentRequests()
+            }.onFailure {
+                _uiState.update { it.copy(errorMessage = "削除に失敗しました。") }
+            }
+        }
+    }
 }
+

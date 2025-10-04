@@ -14,6 +14,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.websarva.wings.android.rideshare.R
+import kotlinx.coroutines.launch
 
 @Composable
 fun LoginScreen(
@@ -22,18 +23,17 @@ fun LoginScreen(
 ) {
     val uiState by loginViewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val scope = rememberCoroutineScope() // CoroutineScopeを取得
 
-    // 1. Googleログインのオプションを設定
     val gso = remember {
         GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            // `google-services.json`から自動生成されるIDを要求
+            // ▼▼▼ 参照先を自動生成されるIDに戻しました ▼▼▼
             .requestIdToken(context.getString(R.string.default_web_client_id))
             .requestEmail()
             .build()
     }
     val googleSignInClient = remember { GoogleSignIn.getClient(context, gso) }
 
-    // 2. Googleログイン画面を起動し、結果を受け取るための仕組み
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -41,21 +41,19 @@ fun LoginScreen(
         try {
             val account = task.getResult(ApiException::class.java)!!
             val idToken = account.idToken
-            // 3. 取得したIDトークンをViewModelに渡してFirebase認証を開始
+            // ▼▼▼ ViewModelの定義に合わせて引数を1つに修正しました ▼▼▼
             loginViewModel.signInWithGoogle(idToken)
         } catch (e: ApiException) {
             println("Google Sign-In failed with error code: ${e.statusCode}")
         }
     }
 
-    // ログイン成功時に親コンポーネント(MainActivity)に通知
     if (uiState.loginSuccess) {
         LaunchedEffect(Unit) {
             onLoginSuccess()
         }
     }
 
-    // --- UI部分 ---
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -66,8 +64,15 @@ fun LoginScreen(
         ) {
             Text("大学乗り合いアプリへようこそ", style = MaterialTheme.typography.headlineSmall)
 
-            // 4. このボタンが押されると、上記2のランチャーがGoogleログイン画面を起動する
-            Button(onClick = { launcher.launch(googleSignInClient.signInIntent) }) {
+            Button(onClick = {
+                // ログイン画面を起動する前に、まずGoogleクライアントからサインアウトする
+                scope.launch {
+                    googleSignInClient.signOut().addOnCompleteListener {
+                        // サインアウトが完了してから、ログインインテントを起動
+                        launcher.launch(googleSignInClient.signInIntent)
+                    }
+                }
+            }) {
                 Text("Googleでサインイン")
             }
 

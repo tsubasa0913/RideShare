@@ -3,24 +3,33 @@ package com.websarva.wings.android.rideshare.ride
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.websarva.wings.android.rideshare.shared.data.model.RideOffer
+import com.websarva.wings.android.rideshare.shared.data.model.User
 import com.websarva.wings.android.rideshare.shared.data.ride.RideRepository
 import com.websarva.wings.android.rideshare.shared.data.session.UserSession
+import com.websarva.wings.android.rideshare.shared.data.user.UserRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+// ▼▼▼ UIに表示するための新しいデータクラスを定義 ▼▼▼
+data class RidePostDisplayData(
+    val ride: RideOffer,
+    val driverName: String
+)
+
 // 乗車一覧画面のUIの状態
 data class RideListUiState(
     val isLoading: Boolean = true,
-    val rides: List<RideOffer> = emptyList(),
+    val posts: List<RidePostDisplayData> = emptyList(), // ◀◀ RideOfferから変更
     val infoMessage: String? = null,
     val errorMessage: String? = null
 )
 
 class RideListViewModel : ViewModel() {
     private val rideRepository = RideRepository()
+    private val userRepository = UserRepository() // ◀◀ UserRepositoryを追加
 
     private val _uiState = MutableStateFlow(RideListUiState())
     val uiState: StateFlow<RideListUiState> = _uiState.asStateFlow()
@@ -29,13 +38,30 @@ class RideListViewModel : ViewModel() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
-            val result = rideRepository.getAllRides()
-
-            result.onSuccess { rideList ->
-                _uiState.update { it.copy(isLoading = false, rides = rideList) }
-            }.onFailure { exception ->
-                _uiState.update { it.copy(isLoading = false, errorMessage = "データの取得に失敗しました: ${exception.message}") }
+            // 1. まず乗車情報をすべて取得
+            val ridesResult = rideRepository.getAllRides()
+            if (ridesResult.isFailure) {
+                _uiState.update { it.copy(isLoading = false, errorMessage = "データの取得に失敗しました。") }
+                return@launch
             }
+            val rides = ridesResult.getOrNull() ?: emptyList()
+
+            // 2. 乗車情報から投稿者のIDリストを作成
+            val driverIds = rides.map { it.driverId }.distinct()
+
+            // 3. 投稿者のプロフィール情報をまとめて取得
+            val usersResult = userRepository.getUsers(driverIds)
+            val usersMap = usersResult.getOrNull() ?: emptyMap()
+
+            // 4. 乗車情報と投稿者名を結合したリストを作成
+            val displayData = rides.map { ride ->
+                RidePostDisplayData(
+                    ride = ride,
+                    driverName = usersMap[ride.driverId]?.name ?: "不明なユーザー"
+                )
+            }
+
+            _uiState.update { it.copy(isLoading = false, posts = displayData) }
         }
     }
 
